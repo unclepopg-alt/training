@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจองห้องอบรม | Room Booking Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- FullCalendar JS & CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar section-glass">
+            <div class="logo">
+                <i class="fa-solid fa-calendar-check"></i>
+                <span>Room Booking</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-target="calendar-section"><i
+                        class="fa-solid fa-calendar-days"></i> ปฏิทินการจอง</a>
+                <a href="#" class="nav-item" data-target="charts-section"><i class="fa-solid fa-chart-pie"></i>
+                    สรุปผลการจอง</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header section-glass">
+                <div class="header-left">
+                    <h1 class="page-title">ระบบบันทึกการจองห้องอบรม</h1>
+                    <p class="subtitle">เลือกวันที่บนปฏิทินเพื่อเริ่มทำการจอง</p>
+                </div>
+                <div class="header-right" style="display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="exportBookingData()">
+                        <i class="fa-solid fa-download"></i> ส่งออก
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearAllBookings()" style="color: #ef4444;">
+                        <i class="fa-solid fa-trash-can"></i> ล้างข้อมูล
+                    </button>
+                    <button id="addBookingBtn" class="btn btn-primary">
+                        <i class="fa-solid fa-plus"></i> จองห้องอบรม
+                    </button>
+                </div>
+            </header>
+
+            <section id="stats-section" class="stats-grid">
+                <div class="stat-card section-glass">
+                    <div class="stat-icon revenue-icon"><i class="fa-solid fa-bookmark"></i></div>
+                    <div class="stat-info">
+                        <p class="stat-title">จำนวนการจองทั้งหมด</p>
+                        <h3 class="stat-value" id="totalBookings">0</h3>
+                        <p class="stat-change text-muted">รายการ</p>
+                    </div>
+                </div>
+                <div class="stat-card section-glass">
+                    <div class="stat-icon orders-icon"><i class="fa-solid fa-check-circle"></i></div>
+                    <div class="stat-info">
+                        <p class="stat-title">การจองในเดือนนี้</p>
+                        <h3 class="stat-value" id="monthlyBookings" style="color: #10b981;">0</h3>
+                        <p class="stat-change text-muted">รายการ</p>
+                    </div>
+                </div>
+                <div class="stat-card section-glass">
+                    <div class="stat-icon conversion-icon"><i class="fa-solid fa-door-open"></i></div>
+                    <div class="stat-info">
+                        <p class="stat-title">ห้องที่ถูกจองมากที่สุด</p>
+                        <h3 class="stat-value" id="topRoom" style="color: #f59e0b;">-</h3>
+                        <p class="stat-change text-muted">ลำดับ 1</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="calendar-section" class="calendar-section section-glass">
+                <div id="calendar"></div>
+            </section>
+
+            <section id="charts-section" class="charts-grid">
+                <div class="chart-container section-glass">
+                    <div class="chart-header">
+                        <h2>สัดส่วนการจองตามห้อง</h2>
+                    </div>
+                    <div class="canvas-wrapper">
+                        <canvas id="roomChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container section-glass">
+                    <div class="chart-header">
+                        <h2>แนวโน้มการเข้าใช้งาน</h2>
+                    </div>
+                    <div class="canvas-wrapper">
+                        <canvas id="usageChart"></canvas>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Booking Modal -->
+    <div id="bookingModal" class="modal">
+        <div class="modal-content section-glass">
+            <div class="modal-header">
+                <h2>ลงทะเบียนจองห้องอบรม</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <form id="bookingForm">
+                <div class="form-group">
+                    <label>ห้องอบรม</label>
+                    <select id="roomSelect" required>
+                        <option value="ห้องอบรมคอมพิวเตอร์ กรมเทคโนโลยีสารสนเทศและอวกาศกลาโหม" selected>
+                            ห้องอบรมคอมพิวเตอร์ กรมเทคโนโลยีสารสนเทศและอวกาศกลาโหม</option>
+                        <option value="ห้องอบรม 2">ห้องอบรม 2</option>
+                        <option value="ห้องประชุมใหญ่">ห้องประชุมใหญ่</option>
+                        <option value="ห้องปฏิบัติการ">ห้องปฏิบัติการ</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>ชื่อผู้จอง</label>
+                    <input type="text" id="userName" placeholder="ระบุชื่อ-นามสกุล" required>
+                </div>
+                <div class="form-group">
+                    <label>หน่วยงาน</label>
+                    <input type="text" id="department" placeholder="ระบุหน่วยงาน/กอง" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>วันที่เริ่มต้น</label>
+                        <input type="date" id="startDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>วันที่สิ้นสุด</label>
+                        <input type="date" id="endDate" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>เวลาเริ่ม</label>
+                        <input type="time" id="startTime" value="09:00" required>
+                    </div>
+                    <div class="form-group">
+                        <label>เวลาสิ้นสุด</label>
+                        <input type="time" id="endTime" value="16:00" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>วัตถุประสงค์</label>
+                    <textarea id="purpose" rows="3" placeholder="ระบุหัวข้อการอบรม หรือวัตถุประสงค์"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary cancel-modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">ยืนยันการจอง</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+
+</html>
